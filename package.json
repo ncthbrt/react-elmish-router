@@ -1,0 +1,43 @@
+{
+  "name": "react-elmish-router",
+  "version": "0.1.0",
+  "description": "Reducer first router for react-use-elmish",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test-only": "jest",
+    "watch": "jest --watch --coverage",
+    "test": "jest --coverage --coverageReporters=text-lcov | coveralls",
+    "prepack": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ncthbrt/react-use-elmish.git"
+  },
+  "homepage": "https://github.com/ncthbrt/react-use-elmish",
+  "author": "Nick Cuthbert",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ncthbrt/react-use-elmish/issues"
+  },
+  "devDependencies": {
+    "@testing-library/react-hooks": "^1.1.0",
+    "@types/jest": "^24.0.16",
+    "@types/react": "^16.8.23",
+    "@types/react-dom": "^16.8.5",
+    "coveralls": "^3.0.5",
+    "jest": "^24.8.0",
+    "react-test-renderer": "^16.8.6",
+    "source-map-loader": "^0.2.4",
+    "ts-jest": "^24.0.2",
+    "ts-loader": "^6.0.4",
+    "typescript": "^3.5.3"
+  },
+  "dependencies": {
+    "route-parser": "^0.0.5"
+  },
+  "peerDependencies": {
+    "react": "^16.8.6",
+    "react-use-elmish": "^0.2.3"
+  }
+}
