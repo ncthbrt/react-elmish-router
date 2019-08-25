@@ -1,28 +1,19 @@
-import * as React from 'react';
 // Note: require is *necessary*  as 'route-parser' uses a different module format.
 // If you change this code to use `import ParsedRoute from 'router-parser';` it *will* break.
 import ParsedRoute = require('route-parser');
 import { Effect, Effects, Dispatch, StateEffectPair } from 'react-use-elmish';
 
-type Match = { [key: string]: string };
+export type Match = { [key: string]: string };
 type UnfilteredMatch = { [key: string]: string | undefined };
 
 export type ParsedHash = { [key: string]: string | true } | false;
 export type ParsedSearch = { [key: string]: string | true } | false;
 
-export function assertTrue(condition: boolean, reason: string) {
+function assertTrue(condition: boolean, reason: string) {
   if (!condition) {
     throw new Error(reason);
   }
 }
-
-export function assertDefined<T>(value: T | undefined) {
-  if (!value) {
-    throw new Error('Expected value to be defined');
-  }
-  return value;
-}
-
 
 function parseHashOrSearch(
   x: string
@@ -59,7 +50,7 @@ function buildHashOrSearch(values: ParsedHash): string {
   }
 }
 
-function filterMatch(obj: UnfilteredMatch) {
+export function filterMatch(obj: UnfilteredMatch) {
   return Object.keys(obj)
     .filter(x => obj[x])
     .reduce((prev, key) => ({ ...prev, [key]: obj[key]! }), {} as Match);
@@ -338,79 +329,6 @@ function listenToHistoryPopEffect<
       window.addEventListener('hashchange', listener);
     },
   ];
-}
-
-/* Type resolves to dispatch & every prop of the <a /> element except for 'href' */
-type RouterLinkProps<Route> = {
-  dispatch: Dispatch<RouterAction<Route>>;
-} & Omit<
-  React.DetailedHTMLProps<
-    React.AnchorHTMLAttributes<HTMLAnchorElement>,
-    HTMLAnchorElement
-  >,
-  'href'
->;
-
-export function Link<Route extends string>({
-  dispatch,
-  route,
-  pushHistory,
-  match,
-  hash,
-  search,
-  ...rest
-}: RouterLinkProps<Route> & {
-  route: Route;
-  match?: UnfilteredMatch;
-  pushHistory?: boolean;
-  hash?: ParsedHash;
-  search?: ParsedSearch;
-}) {
-  return (
-    <a
-      onClick={() =>
-        dispatch({
-          type: 'ROUTER',
-          subtype: 'NAVIGATE_TO_ROUTE',
-          route,
-          pushHistory: pushHistory || false,
-          match: filterMatch(match || {}),
-          hash,
-          search,
-        })
-      }
-      {...rest}
-    />
-  );
-}
-
-export function Back({ dispatch, ...props }: RouterLinkProps<unknown>) {
-  return (
-    <a
-      onClick={() =>
-        dispatch({
-          type: 'ROUTER',
-          subtype: 'NAVIGATE_BACK',
-        })
-      }
-      href="#"
-      {...props}
-    />
-  );
-}
-
-export function Forward({ dispatch, ...props }: RouterLinkProps<unknown>) {
-  return (
-    <a
-      onClick={() =>
-        dispatch({
-          type: 'ROUTER',
-          subtype: 'NAVIGATE_FORWARD',
-        })
-      }
-      {...props}
-    />
-  );
 }
 
 export function dispatchNavigate<Route extends string>(
