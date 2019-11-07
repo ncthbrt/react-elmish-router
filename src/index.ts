@@ -28,7 +28,7 @@ function parseHashOrSearch(
       .reduce(
         (prev, curr) => ({
           ...prev,
-          [curr[0]]: curr[1] !== '' ? curr[1] : true,
+          [curr[0]]: curr[1] !== '' ? decodeURIComponent(curr[1]) : true,
         }),
         {}
       );
@@ -43,7 +43,7 @@ function buildHashOrSearch(values: ParsedHash): string {
       if (values[key] == true) {
         return key;
       }
-      return `${key}=${values[key]}`;
+      return `${key}=${encodeURIComponent(values[key])}`;
     });
 
     return keyValuePairs.join('&');
@@ -58,7 +58,7 @@ export function filterMatch(obj: UnfilteredMatch) {
 
 export type RouteFromRouteDefinitions<
   RouteDefintion extends { [route: string]: string }
-> = keyof RouteDefintion & string;
+  > = keyof RouteDefintion & string;
 
 export type RouteDefinitionsFromRoute<Route extends string> = {
   [R in Route]: string;
@@ -97,7 +97,7 @@ export type PathnameUpdatedAction<Route> = {
 
 type NavigateToRouteAction<Route> = {
   type: 'ROUTER';
-  subtype: 'NAVIGATE_TO_ROUTE';  
+  subtype: 'NAVIGATE_TO_ROUTE';
   route: Route;
   pushHistory: boolean;
   match: Match;
@@ -130,17 +130,18 @@ export function navigateEffect<Route extends string>(
       assertTrue(
         !!path,
         `${route} should match the format '${
-          r.pattern
+        r.pattern
         }' but only received the following parameters ${JSON.stringify(
           matches
         )} `
       );
+      const builtHash = buildHashOrSearch(hash || {});
+      const builtSearch = buildHashOrSearch(search || {});
+      const pathWithHashAndSearch = path + (builtSearch === '' ? '' : '?' + builtSearch) + (builtHash === '' ? '' : '#' + builtHash);
       if (pushHistory) {
-        window.history.pushState({}, '', path);
-        window.location.search = buildHashOrSearch(search || {});
-        window.location.hash = buildHashOrSearch(hash || {});
+        window.history.pushState({}, '', pathWithHashAndSearch);
       } else {
-        window.history.replaceState({}, '', path);
+        window.history.replaceState({}, '', pathWithHashAndSearch);
       }
       dispatch({
         type: 'ROUTER',
