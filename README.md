@@ -37,7 +37,7 @@ export const routeDefinitions = {
 In your elmish initialization function, need to initialize the router:
 ```typescript
 function intializer(): StateEffectPair<State, Action> {
-    const [state, action] = initializeRouter<Route, Omit<DomainState, 'client'>, Action>(routeDefinitions, [{
+    const [state, action] = initializeRouter<Route, Omit<DomainState, 'router'>, Action>(routeDefinitions, [{
         /* Your domain state here */
     }, Effects.none<Action>()]);
 
