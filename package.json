@@ -1,6 +1,6 @@
 {
   "name": "react-elmish-router",
-  "version": "0.1.0",
+  "version": "2.0.0",
   "description": "Reducer first router for react-use-elmish",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -38,6 +38,6 @@
   },
   "peerDependencies": {
     "react": "^16.8.6",
-    "react-use-elmish": "^0.2.3"
+    "react-use-elmish": "^1.0.0"
   }
 }

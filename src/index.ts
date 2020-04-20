@@ -1,7 +1,7 @@
 // Note: require is *necessary*  as 'route-parser' uses a different module format.
 // If you change this code to use `import ParsedRoute from 'router-parser';` it *will* break.
 import ParsedRoute = require('route-parser');
-import { Effect, Effects, Dispatch, StateEffectPair } from 'react-use-elmish';
+import { Dispatch, Effect, Effects, StateEffectPair } from 'react-use-elmish';
 
 export type Match = { [key: string]: string };
 type UnfilteredMatch = { [key: string]: string | undefined };
@@ -35,7 +35,7 @@ function parseHashOrSearch(
   }
 }
 
-function buildHashOrSearch(values: ParsedHash): string {
+function buildHash(values: ParsedHash): string {
   if (!values || Object.keys(values).length == 0) {
     return '';
   } else {
@@ -115,47 +115,73 @@ export type RouterAction<Route> =
   | NavigateBackAction
   | NavigateForwardAction;
 
+function encodeMatches(matches: Match) {
+  return Object.keys(matches).reduce((prev, curr) => {
+    const value = matches[curr];
+    if (value)
+      prev[curr] = encodeURIComponent(value);
+
+    return prev;
+  }, {} as Match);
+}
+
+function decodeMatches(matches: Match) {
+  return Object.keys(matches).filter(x => matches[x]).reduce((prev, curr) => {
+    prev[curr] = decodeURIComponent(matches[curr]);
+    return prev;
+  }, {} as Match);
+}
+
 export function navigateEffect<Route extends string>(
   route: Route,
   pushHistory: boolean,
-  matches: Match,
+  matches: UnfilteredMatch,
   state: RouterState<Route>,
-  hash?: ParsedHash,
-  search?: ParsedSearch
+  hash: ParsedHash = {},
 ) {
-  return [
-    (dispatch: Dispatch<RouterAction<Route>>) => {
-      const r = state.router._routes.find(x => x.name == route)!;
-      const path = r.parsed.reverse(matches);
-      assertTrue(
-        !!path,
-        `${route} should match the format '${
-        r.pattern
-        }' but only received the following parameters ${JSON.stringify(
-          matches
-        )} `
-      );
-      const builtHash = buildHashOrSearch(hash || {});
-      const builtSearch = buildHashOrSearch(search || {});
-      const pathWithHashAndSearch = path + (builtSearch === '' ? '' : '?' + builtSearch) + (builtHash === '' ? '' : '#' + builtHash);
-      if (pushHistory) {
-        window.history.pushState({}, '', pathWithHashAndSearch);
-      } else {
-        window.history.replaceState({}, '', pathWithHashAndSearch);
-      }
-      dispatch({
-        type: 'ROUTER',
-        subtype: 'URL_PATHNAME_UPDATED',
-        pathname: path,
-        route: route,
-        match: matches,
-        hash: window.location.hash,
-        search: window.location.search,
-        parsedHash: parseHashOrSearch(window.location.hash),
-        parsedSearch: parseHashOrSearch(window.location.search),
-      });
-    },
-  ];
+  return Effects.dispatchFromFunction<RouterAction<Route>>(() => {
+    const r = state.router._routes.find(x => x.name == route)!;
+    const path = r.parsed.reverse(encodeMatches(filterMatch(matches)));
+    assertTrue(
+      !!path,
+      `${route} should match the format '${
+      r.pattern
+      }' but only received the following parameters ${JSON.stringify(
+        matches
+      )} `
+    );
+    const builtHash = buildHash(hash ?? {});
+    const pathWithHashAndSearch = path + (builtHash === '' ? '' : '#' + builtHash);
+    if (pushHistory) {
+      window.history.pushState({}, '', pathWithHashAndSearch);
+    } else {
+      window.history.replaceState({}, '', pathWithHashAndSearch);
+    }
+    return ({
+      type: 'ROUTER',
+      subtype: 'URL_PATHNAME_UPDATED',
+      pathname: path,
+      route: route,
+      match: filterMatch(matches),
+      hash: window.location.hash,
+      search: window.location.search,
+      parsedHash: parseHashOrSearch(window.location.hash),
+      parsedSearch: parseHashOrSearch(window.location.search),
+    });
+  }, (err) => {
+    console.error('FAILED TO ROUTE DUE TO ', err);
+    return ({
+      type: 'ROUTER',
+      subtype: 'URL_PATHNAME_UPDATED',
+      pathname: window.location.pathname + window.location.search,
+      route: false,
+      match: {},
+      hash: window.location.hash,
+      search: window.location.search,
+      parsedHash: parseHashOrSearch(window.location.hash),
+      parsedSearch: parseHashOrSearch(window.location.search),
+    })
+  });
 }
 
 export function goBackEffect() {
@@ -177,7 +203,7 @@ export function goForwardEffect() {
 function parseRoutes<RouteDefinitions extends { [name: string]: string }>(
   routes: RouteDefinitions
 ): ParsedRoutes<RouteFromRouteDefinitions<RouteDefinitions>> {
-  return Object.keys(routes).reduce(
+  return Object.keys(routes).sort().reduce(
     (prev, route) => [
       ...prev,
       {
@@ -198,7 +224,7 @@ function findMatchingRoute<Route extends string>(
     const routeInfo = routes[route];
     const match = routeInfo.parsed.match(pathname);
     if (!!match) {
-      return [match, routeInfo.name];
+      return [decodeMatches(match), routeInfo.name];
     }
   }
   return [{}, false];
@@ -233,8 +259,7 @@ export function routerReducer<
           action.pushHistory,
           action.match,
           prev,
-          action.hash,
-          action.search
+          action.hash
         ) as Effect<Action>,
       ];
     case 'NAVIGATE_BACK':
@@ -245,24 +270,25 @@ export function routerReducer<
 }
 
 export function initializeRouter<
-  RouteDefinitions extends { [route: string]: string },
+  Routes extends string,
   State,
-  Action extends RouterAction<RouteFromRouteDefinitions<RouteDefinitions>>
+  Action extends unknown | RouterAction<Routes>
 >(
-  routes: RouteDefinitions,
+  routes: RouteDefinitionsFromRoute<Routes>,
   stateEffectPair: StateEffectPair<State, Action>
 ): StateEffectPair<
-  State & RouterState<RouteFromRouteDefinitions<RouteDefinitions>>,
+  State & RouterState<Routes>,
   Action
 > {
   const parsedRoutes = parseRoutes(routes);
   const pathname = window.location.pathname;
   const search = window.location.search;
   const hash = window.location.hash;
-  const [match, route] = findMatchingRoute(pathname, parsedRoutes);
+  const [match, route] = findMatchingRoute(pathname + search, parsedRoutes);
+  console.log(match);
 
   const state: State &
-    RouterState<RouteFromRouteDefinitions<RouteDefinitions>> = {
+    RouterState<Routes> = {
     ...stateEffectPair[0],
     router: {
       _routes: parsedRoutes,
@@ -300,7 +326,7 @@ export function initializeRouter<
 
 function listenToHistoryPopEffect<
   Route extends string,
-  Action extends RouterAction<Route>
+  Action extends unknown | RouterAction<Route>
 >(state: RouterState<Route>): Effect<Action> {
   return [
     (dispatch: Dispatch<Action>) => {
@@ -309,7 +335,7 @@ function listenToHistoryPopEffect<
         const search = window.location.search;
         const hash = window.location.hash;
         const [match, route] = findMatchingRoute(
-          pathname,
+          pathname + search,
           state.router._routes
         );
         dispatch({
@@ -324,9 +350,7 @@ function listenToHistoryPopEffect<
           parsedSearch: parseHashOrSearch(search),
         } as Action);
       };
-      const prev = window.onpopstate;
-      window.addEventListener('onpopstate', listener);
-
+      window.addEventListener('popstate', listener);
       window.addEventListener('hashchange', listener);
     },
   ];
